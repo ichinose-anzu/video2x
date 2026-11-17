@@ -15,10 +15,14 @@ jobs:
       - name: Install dependencies (Homebrew)
         run: |
           brew install cmake ninja pkg-config ffmpeg ncnn spdlog boost \
-            glslang molten-vk vulkan-loader vulkan-headers
+            glslang molten-vk vulkan-loader vulkan-headers libomp llvm
 
       - name: Configure
         run: |
+          LLVM_PREFIX="$(brew --prefix llvm)"
+          OMP_PREFIX="$(brew --prefix libomp)"
+          CC="$LLVM_PREFIX/bin/clang" \
+          CXX="$LLVM_PREFIX/bin/clang++" \
           cmake -G Ninja -S . -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DVIDEO2X_USE_EXTERNAL_NCNN=ON \
@@ -26,6 +30,12 @@ jobs:
             -DVIDEO2X_USE_EXTERNAL_BOOST=ON \
             -DVIDEO2X_ENABLE_X86_64_V3=OFF \
             -DVIDEO2X_ENABLE_X86_64_V4=OFF \
+            -DOpenMP_ROOT="$OMP_PREFIX" \
+            '-DOpenMP_C_FLAGS:STRING=-Xclang -fopenmp' \
+            '-DOpenMP_CXX_FLAGS:STRING=-Xclang -fopenmp' \
+            -DOpenMP_C_LIB_NAMES:STRING=libomp \
+            -DOpenMP_CXX_LIB_NAMES:STRING=libomp \
+            -DOpenMP_libomp_LIBRARY:FILEPATH="$OMP_PREFIX/lib/libomp.dylib" \
             -DCMAKE_INSTALL_PREFIX=video2x-install
 
       - name: Build
