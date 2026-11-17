@@ -8,6 +8,10 @@
 #include <cstring>
 #endif
 
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
+
 #include <spdlog/spdlog.h>
 
 #include "logger_manager.h"
@@ -41,6 +45,28 @@ static std::filesystem::path get_executable_directory() {
     return execpath.parent_path();
 }
 #else   // _WIN32
+#ifdef __APPLE__
+static std::filesystem::path get_executable_directory() {
+    uint32_t size = 0;
+    _NSGetExecutablePath(nullptr, &size);
+
+    std::vector<char> buf(size);
+    if (_NSGetExecutablePath(buf.data(), &size) != 0) {
+        logger()->error("Error getting executable path");
+        return std::filesystem::path();
+    }
+
+    std::error_code ec;
+    std::filesystem::path filepath = std::filesystem::canonical(buf.data(), ec);
+
+    if (ec) {
+        logger()->error("Error resolving executable path: {}", ec.message());
+        return std::filesystem::path();
+    }
+
+    return filepath.parent_path();
+}
+#else   // __APPLE__
 static std::filesystem::path get_executable_directory() {
     std::error_code ec;
     std::filesystem::path filepath = std::filesystem::read_symlink("/proc/self/exe", ec);
@@ -52,6 +78,7 @@ static std::filesystem::path get_executable_directory() {
 
     return filepath.parent_path();
 }
+#endif  // __APPLE__
 #endif  // _WIN32
 
 bool file_is_readable(const std::filesystem::path& path) {

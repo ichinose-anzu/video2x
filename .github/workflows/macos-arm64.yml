@@ -1,0 +1,58 @@
+name: Build macOS arm64 (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-macos-arm64:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install dependencies (Homebrew)
+        run: |
+          brew install cmake ninja pkg-config ffmpeg ncnn spdlog boost \
+            glslang molten-vk vulkan-loader vulkan-headers
+
+      - name: Configure
+        run: |
+          cmake -G Ninja -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DVIDEO2X_USE_EXTERNAL_NCNN=ON \
+            -DVIDEO2X_USE_EXTERNAL_SPDLOG=ON \
+            -DVIDEO2X_USE_EXTERNAL_BOOST=ON \
+            -DVIDEO2X_ENABLE_X86_64_V3=OFF \
+            -DVIDEO2X_ENABLE_X86_64_V4=OFF \
+            -DCMAKE_INSTALL_PREFIX=video2x-install
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Smoke tests
+        run: |
+          ./build/video2x --version
+          ./build/video2x --list-devices
+
+      - name: Install to video2x-install/
+        run: cmake --install build
+        continue-on-error: true
+
+      - name: Diagnostics
+        run: |
+          uname -m
+          otool -L build/video2x
+          otool -L build/libvideo2x.dylib
+          brew --prefix ncnn
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: video2x-macos-arm64
+          path: |
+            build/video2x
+            build/libvideo2x.dylib
+            video2x-install/
+          if-no-files-found: error
