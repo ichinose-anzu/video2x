@@ -19,6 +19,7 @@ jobs:
 
       - name: Configure
         run: |
+          echo "LIBRARY_PATH=$(brew --prefix)/lib${LIBRARY_PATH:+:$LIBRARY_PATH}" >> "$GITHUB_ENV"
           LLVM_PREFIX="$(brew --prefix llvm)"
           OMP_PREFIX="$(brew --prefix libomp)"
           CC="$LLVM_PREFIX/bin/clang" \
